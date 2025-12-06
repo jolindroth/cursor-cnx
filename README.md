@@ -1,0 +1,2 @@
+# cursor-cnx
+Cursor hackathon
