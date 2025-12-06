@@ -1,6 +1,6 @@
-# RealEstate Video Generator
+# Marketing Master
 
-An AI-powered application that generates professional real estate marketing videos using Google's Gemini and Veo 3.1 models.
+An AI-powered application that generates professional marketing videos using Google's Gemini and Veo 3.1 models.
 
 ## Features
 

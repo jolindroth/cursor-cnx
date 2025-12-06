@@ -3,7 +3,7 @@ import { generatePresenterScript } from '@/lib/genai';
 
 export async function POST(request: NextRequest) {
   try {
-    const { propertyAnalysis, stylePrompt, presenterName } = await request.json();
+    const { propertyAnalysis, stylePrompt, presenterName, language } = await request.json();
 
     if (!propertyAnalysis || !stylePrompt || !presenterName) {
       return NextResponse.json(
@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const script = await generatePresenterScript(
       propertyAnalysis,
       stylePrompt,
-      presenterName
+      presenterName,
+      language || 'English'
     );
 
     return NextResponse.json({ script });
@@ -27,4 +28,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

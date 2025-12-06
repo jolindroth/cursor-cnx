@@ -5,6 +5,7 @@ import { EditorLayout } from '@/components/layout/EditorLayout';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { PreviewPanel } from '@/components/layout/PreviewPanel';
 import { PropertyPhoto, Avatar, VideoStyle, GenerationState } from '@/types';
+import { Language } from '@/lib/languages';
 
 export default function Home() {
   // State management
@@ -13,6 +14,7 @@ export default function Home() {
   const [customAvatarFile, setCustomAvatarFile] = useState<File | null>(null);
   const [customAvatarPreview, setCustomAvatarPreview] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<VideoStyle | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
   const [generation, setGeneration] = useState<GenerationState>({
     status: 'idle',
     progress: 0,
@@ -48,6 +50,10 @@ export default function Home() {
     setSelectedStyle(style);
   }, []);
 
+  const handleLanguageSelect = useCallback((language: Language) => {
+    setSelectedLanguage(language);
+  }, []);
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -59,15 +65,16 @@ export default function Home() {
 
   const handleGenerate = async () => {
     if (!selectedStyle) return;
+    if (!selectedLanguage) return;
     if (photos.length === 0) return;
     if (!selectedAvatar && !customAvatarPreview) return;
 
     try {
-      // Step 1: Analyze photos
+      // Step 1: Analyze ALL photos
       setGeneration({
         status: 'analyzing',
         progress: 10,
-        message: 'Analyzing property photos...',
+        message: `Analyzing ${photos.length} property photos...`,
       });
 
       const photoBase64 = await Promise.all(
@@ -87,11 +94,11 @@ export default function Home() {
 
       const { analysis } = await analyzeResponse.json();
 
-      // Step 2: Generate script
+      // Step 2: Generate script in selected language
       setGeneration({
         status: 'generating-script',
         progress: 40,
-        message: 'Writing presenter script...',
+        message: `Writing script in ${selectedLanguage.name}...`,
       });
 
       const presenterName = selectedAvatar?.name || 'Your Presenter';
@@ -103,6 +110,7 @@ export default function Home() {
           propertyAnalysis: analysis,
           stylePrompt: selectedStyle.prompt,
           presenterName,
+          language: selectedLanguage.name,
         }),
       });
 
@@ -113,7 +121,7 @@ export default function Home() {
 
       const { script } = await scriptResponse.json();
 
-      // Step 3: Generate video with Veo
+      // Step 3: Generate video with Veo using ALL reference images
       setGeneration({
         status: 'generating-video',
         progress: 60,
@@ -125,8 +133,6 @@ export default function Home() {
       if (customAvatarFile) {
         avatarImage = await fileToBase64(customAvatarFile);
       } else if (selectedAvatar) {
-        // For predefined avatars, we'd need to fetch and convert
-        // For now, use placeholder
         avatarImage = selectedAvatar.image;
       } else {
         throw new Error('No avatar selected');
@@ -140,6 +146,7 @@ export default function Home() {
           avatarImage,
           script,
           stylePrompt: selectedStyle.prompt,
+          language: selectedLanguage.name,
         }),
       });
 
@@ -171,7 +178,8 @@ export default function Home() {
     photos.length > 0 ||
     selectedAvatar !== null ||
     customAvatarPreview !== null ||
-    selectedStyle !== null;
+    selectedStyle !== null ||
+    selectedLanguage !== null;
 
   return (
     <EditorLayout
@@ -185,6 +193,8 @@ export default function Home() {
           onCustomAvatarUpload={handleCustomAvatarUpload}
           selectedStyle={selectedStyle}
           onStyleSelect={handleStyleSelect}
+          selectedLanguage={selectedLanguage}
+          onLanguageSelect={handleLanguageSelect}
           generation={generation}
           onGenerate={handleGenerate}
         />

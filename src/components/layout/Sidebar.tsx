@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { PhotoUploader } from '@/components/sidebar/PhotoUploader';
 import { AvatarSelector } from '@/components/sidebar/AvatarSelector';
 import { StyleSelector } from '@/components/sidebar/StyleSelector';
+import { LanguageSelector } from '@/components/sidebar/LanguageSelector';
 import { PropertyPhoto, Avatar, VideoStyle, GenerationState } from '@/types';
+import { Language } from '@/lib/languages';
 
 interface SidebarProps {
   photos: PropertyPhoto[];
@@ -17,6 +19,8 @@ interface SidebarProps {
   onCustomAvatarUpload: (file: File, preview: string) => void;
   selectedStyle: VideoStyle | null;
   onStyleSelect: (style: VideoStyle) => void;
+  selectedLanguage: Language | null;
+  onLanguageSelect: (language: Language) => void;
   generation: GenerationState;
   onGenerate: () => void;
 }
@@ -30,6 +34,8 @@ export function Sidebar({
   onCustomAvatarUpload,
   selectedStyle,
   onStyleSelect,
+  selectedLanguage,
+  onLanguageSelect,
   generation,
   onGenerate,
 }: SidebarProps) {
@@ -37,6 +43,7 @@ export function Sidebar({
     photos.length > 0 &&
     (selectedAvatar !== null || customAvatarPreview !== null) &&
     selectedStyle !== null &&
+    selectedLanguage !== null &&
     generation.status === 'idle';
 
   const isGenerating = generation.status !== 'idle' && generation.status !== 'complete' && generation.status !== 'error';
@@ -49,7 +56,7 @@ export function Sidebar({
           <section>
             <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <span className="text-base">📷</span>
-              Property Photos
+              Property Photo
             </h2>
             <PhotoUploader photos={photos} onPhotosChange={onPhotosChange} />
           </section>
@@ -67,6 +74,20 @@ export function Sidebar({
               customAvatarPreview={customAvatarPreview}
               onAvatarSelect={onAvatarSelect}
               onCustomAvatarUpload={onCustomAvatarUpload}
+            />
+          </section>
+
+          <Separator />
+
+          {/* Language Selection Section */}
+          <section>
+            <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <span className="text-base">🗣️</span>
+              Presenter Language
+            </h2>
+            <LanguageSelector
+              selectedLanguage={selectedLanguage}
+              onLanguageSelect={onLanguageSelect}
             />
           </section>
 
@@ -105,13 +126,13 @@ export function Sidebar({
         </Button>
         {!canGenerate && generation.status === 'idle' && (
           <p className="text-xs text-muted-foreground text-center mt-2">
-            {photos.length === 0 && 'Upload property photos • '}
-            {!selectedAvatar && !customAvatarPreview && 'Select a presenter • '}
-            {!selectedStyle && 'Choose a style'}
+            {photos.length === 0 && 'Upload photos • '}
+            {!selectedAvatar && !customAvatarPreview && 'Select presenter • '}
+            {!selectedLanguage && 'Choose language • '}
+            {!selectedStyle && 'Pick style'}
           </p>
         )}
       </div>
     </div>
   );
 }
-

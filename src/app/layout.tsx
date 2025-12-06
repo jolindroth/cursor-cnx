@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RealEstate Video Generator",
-  description: "Generate professional real estate marketing videos with AI",
+  title: "Marketing Master",
+  description: "Generate professional AI-powered marketing videos",
 };
 
 export default function RootLayout({

@@ -11,9 +11,14 @@ interface PhotoUploaderProps {
 }
 
 export function PhotoUploader({ photos, onPhotosChange }: PhotoUploaderProps) {
+  const MAX_PHOTOS = 1;
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const newPhotos: PropertyPhoto[] = acceptedFiles.map((file) => ({
+      const remainingSlots = MAX_PHOTOS - photos.length;
+      const filesToAdd = acceptedFiles.slice(0, remainingSlots);
+      
+      const newPhotos: PropertyPhoto[] = filesToAdd.map((file) => ({
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         file,
         preview: URL.createObjectURL(file),
@@ -53,7 +58,9 @@ export function PhotoUploader({ photos, onPhotosChange }: PhotoUploaderProps) {
       >
         <input {...getInputProps()} />
         <div className="text-3xl mb-2">📁</div>
-        {isDragActive ? (
+        {photos.length >= MAX_PHOTOS ? (
+          <p className="text-sm text-muted-foreground">Maximum {MAX_PHOTOS} photos reached</p>
+        ) : isDragActive ? (
           <p className="text-sm text-primary font-medium">Drop photos here...</p>
         ) : (
           <>
@@ -61,7 +68,7 @@ export function PhotoUploader({ photos, onPhotosChange }: PhotoUploaderProps) {
               Drop photos here or click to browse
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              JPEG, PNG, WebP supported
+              Starting scene • JPEG, PNG, WebP
             </p>
           </>
         )}
@@ -93,7 +100,7 @@ export function PhotoUploader({ photos, onPhotosChange }: PhotoUploaderProps) {
 
       {photos.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          {photos.length} photo{photos.length !== 1 ? 's' : ''} selected
+          {photos.length} of {MAX_PHOTOS} photos selected
         </p>
       )}
     </div>

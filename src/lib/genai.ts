@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, VideoGenerationReferenceType } from '@google/genai';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
@@ -20,14 +20,15 @@ export async function analyzePropertyPhotos(photoBase64Array: string[]): Promise
     },
   }));
 
-  const prompt = `You are a professional real estate analyst. Analyze these property photos and provide:
-1. A brief overall description of the property type and style
-2. Key features visible in the photos (rooms, amenities, architectural details)
-3. The apparent condition and quality level
-4. Notable selling points
-5. The general atmosphere and feel of the property
+  const prompt = `You are a professional real estate analyst. Analyze this property photo and describe:
 
-Be concise but comprehensive. Format as a structured summary that can be used to create a property marketing video script.`;
+1. What room or area is shown
+2. Key features visible (furniture, fixtures, architectural details)
+3. Notable design elements or selling points
+4. The condition and quality level
+5. The atmosphere and feel of the space
+
+Be specific and detailed so a video presenter can speak about this room naturally.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -48,13 +49,15 @@ Be concise but comprehensive. Format as a structured summary that can be used to
 export async function generatePresenterScript(
   propertyAnalysis: string,
   stylePrompt: string,
-  presenterName: string
+  presenterName: string,
+  language: string
 ): Promise<string> {
   if (!ai) {
     throw new Error('Google AI API key not configured');
   }
 
   const prompt = `You are creating a script for a real estate video presenter named ${presenterName}.
+The script MUST be written entirely in ${language}.
 
 Property Analysis:
 ${propertyAnalysis}
@@ -62,14 +65,15 @@ ${propertyAnalysis}
 Video Style:
 ${stylePrompt}
 
-Write a natural, engaging script that the presenter will speak while walking through and showcasing this property. The script should:
-1. Match the specified video style
-2. Highlight the key features identified in the analysis
-3. Feel conversational and authentic
-4. Be approximately 60-90 seconds when spoken
-5. Include natural pauses and transitions between areas
+Write a natural, engaging script in ${language} that the presenter will speak while showcasing this room/space. The script should:
+1. Be written 100% in ${language} (not English, unless English was selected)
+2. Match the specified video style
+3. Highlight the key features from the analysis
+4. Be approximately 8 seconds when spoken (brief but impactful)
+5. Feel conversational and authentic
+6. Include a brief welcome and highlight of the best features
 
-Format the script as spoken dialogue only, without stage directions.`;
+Format the script as spoken dialogue only, without stage directions. Keep it concise for the 8-second video.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -88,37 +92,89 @@ export async function generateVideoWithVeo(
   propertyPhotos: string[],
   avatarImage: string,
   script: string,
-  stylePrompt: string
+  stylePrompt: string,
+  language: string
 ): Promise<VideoGenerationResult> {
   if (!ai) {
     throw new Error('Google AI API key not configured');
   }
 
+  if (propertyPhotos.length < 1) {
+    throw new Error('At least one property photo is required');
+  }
+
+  // Check if using custom presenter
+  const hasCustomPresenter = avatarImage && !avatarImage.startsWith('/');
+
   // Build a comprehensive prompt for video generation
-  // Include the script as dialogue and the style direction
+  // Use BOTH property photo AND presenter as reference images
   const videoPrompt = `${stylePrompt}
 
-A professional real estate presenter walks through and showcases a property. The presenter speaks directly to the camera with confidence and warmth.
+Create a real estate marketing video in ${language}.
 
-Presenter dialogue: "${script}"
+REFERENCE IMAGE 1 (Property/Room): This is the EXACT room that must be shown in the video. 
+- Reproduce this room EXACTLY as shown - same furniture, same layout, same colors, same everything
+- The camera should show THIS EXACT room throughout the video
+- Do NOT invent new furniture or change the room layout
+- Keep the room looking IDENTICAL to the reference image
 
-The video should feature smooth, cinematic camera movements highlighting the property's best features. Natural lighting, professional quality, high production value.`;
+${hasCustomPresenter ? `REFERENCE IMAGE 2 (Presenter): This is the person who should appear as the presenter.
+- The presenter should look EXACTLY like the person in this reference image
+- Same face, same appearance
+- The presenter stands in the room and gestures toward features` : 'A professional presenter should appear in the room to explain features.'}
 
-  // Use the first property photo as the starting frame for image-to-video generation
-  const firstPhotoBase64 = propertyPhotos[0].replace(/^data:image\/\w+;base64,/, '');
+The presenter speaks this dialogue in ${language}: "${script}"
 
-  // Start video generation with Veo 3.1
+CRITICAL: 
+- The room must look EXACTLY like Reference Image 1
+- ${hasCustomPresenter ? 'The presenter must look EXACTLY like Reference Image 2' : ''}
+- Keep camera mostly static, focused on the room
+- Presenter points at and explains features visible in the room
+- Do NOT show any areas not visible in the room reference image`;
+
+  // Build reference images array
+  const referenceImages = [];
+
+  // Reference 1: Property photo (the room)
+  const propertyPhotoBase64 = propertyPhotos[0].replace(/^data:image\/\w+;base64,/, '');
+  referenceImages.push({
+    image: {
+      imageBytes: propertyPhotoBase64,
+      mimeType: 'image/jpeg',
+    },
+    referenceType: VideoGenerationReferenceType.ASSET,
+  });
+
+  // Reference 2: Custom presenter (if uploaded)
+  if (hasCustomPresenter) {
+    const presenterBase64 = avatarImage.replace(/^data:image\/\w+;base64,/, '');
+    referenceImages.push({
+      image: {
+        imageBytes: presenterBase64,
+        mimeType: 'image/jpeg',
+      },
+      referenceType: VideoGenerationReferenceType.ASSET,
+    });
+  }
+
+  console.log('Starting video generation with Veo 3.1...');
+  console.log('- Reference images count:', referenceImages.length);
+  console.log('- Reference 1: Property photo');
+  console.log('- Reference 2:', hasCustomPresenter ? 'Custom presenter' : 'None (AI will generate presenter)');
+
+  // Build the config - reference images require 8 seconds
+  const config: Record<string, unknown> = {
+    aspectRatio: '16:9',
+    durationSeconds: 8,
+    personGeneration: 'allow_adult',
+    referenceImages: referenceImages,
+  };
+
+  // Start video generation with Veo 3.1 using reference images only (no starting frame)
   let operation = await ai.models.generateVideos({
     model: 'veo-3.1-generate-preview',
     prompt: videoPrompt,
-    image: {
-      imageBytes: firstPhotoBase64,
-      mimeType: 'image/jpeg',
-    },
-    config: {
-      aspectRatio: '16:9',
-      personGeneration: 'allow_adult',
-    },
+    config: config,
   });
 
   // Poll the operation status until the video is ready
@@ -137,7 +193,6 @@ The video should feature smooth, cinematic camera movements highlighting the pro
   }
 
   // Return the video URL/file reference
-  // The video can be downloaded using ai.files.download()
   return {
     videoUrl: generatedVideo.video.uri || '',
   };
@@ -148,8 +203,6 @@ export async function downloadVideo(videoFile: { uri?: string }): Promise<Blob> 
     throw new Error('Google AI API key not configured');
   }
 
-  // For server-side, we need to fetch the video using the API
-  // The URI returned from Veo needs to be accessed with the API key
   if (!videoFile.uri) {
     throw new Error('No video URI provided');
   }

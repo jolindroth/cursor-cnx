@@ -5,7 +5,7 @@ export const maxDuration = 300; // 5 minutes timeout for video generation
 
 export async function POST(request: NextRequest) {
   try {
-    const { photos, avatarImage, script, stylePrompt } = await request.json();
+    const { photos, avatarImage, script, stylePrompt, language } = await request.json();
 
     if (!photos || !Array.isArray(photos) || photos.length === 0) {
       return NextResponse.json(
@@ -21,13 +21,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Starting video generation with Veo 3.1...');
+    console.log(`Starting video generation with Veo 3.1 using ${photos.length} reference images...`);
     
     const result = await generateVideoWithVeo(
       photos,
       avatarImage || '',
       script,
-      stylePrompt
+      stylePrompt,
+      language || 'English'
     );
 
     // Return a proxied URL that will work in the browser

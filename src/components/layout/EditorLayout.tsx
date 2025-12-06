@@ -14,10 +14,10 @@ export function EditorLayout({ sidebar, preview }: EditorLayoutProps) {
       <header className="flex h-14 shrink-0 items-center border-b border-border px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            RE
+            MM
           </div>
           <h1 className="text-lg font-semibold tracking-tight">
-            RealEstate Video Generator
+            Marketing Master
           </h1>
         </div>
       </header>
